@@ -1,4 +1,4 @@
-name: Deploy Flask S3 App
+name: Deploy Flask register App
 
 on:
   push:
