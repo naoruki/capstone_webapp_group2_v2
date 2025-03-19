@@ -1,11 +1,6 @@
 name: Deploy Flask register App
 
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'flask-register-service/**'
+on: workflow_dispatch
 
 jobs:
   deploy:
