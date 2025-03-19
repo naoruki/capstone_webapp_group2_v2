@@ -65,9 +65,6 @@ REGISTER_FORM = """
 #     except Exception as exc:
 #         logger.exception("Error registering user in DynamoDB.")
 #         return f"Error registering user: {str(exc)}", 500
-@app.route("/")
-def home():
-    return "Flask App is Running!"
-    
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
