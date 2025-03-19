@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'flask-s3-service/**'
+      - 'flask-register-service/**'
 
 jobs:
   deploy:
