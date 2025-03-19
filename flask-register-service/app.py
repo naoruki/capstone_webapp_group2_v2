@@ -38,33 +38,9 @@ REGISTER_FORM = """
   </body>
 </html>
 """
-
-# @app.route("/register", methods=["GET", "POST"])
-# def register():
-#     if request.method == "GET":
-#         return render_template_string(REGISTER_FORM)
-    
-#     username = request.form.get("username")
-#     password = request.form.get("password")
-    
-#     if not username or not password:
-#         logger.warning("Username or password missing.")
-#         return "Username and password are required.", 400
-    
-#     hashed_password = generate_password_hash(password)
-    
-#     try:
-#         table.put_item(
-#             Item={
-#                 "username": username,
-#                 "password": hashed_password  # Store hashed password
-#             }
-#         )
-#         logger.info("User '%s' registered successfully.", username)
-#         return f"User '{username}' registered successfully!"
-#     except Exception as exc:
-#         logger.exception("Error registering user in DynamoDB.")
-#         return f"Error registering user: {str(exc)}", 500
+@app.route("/")
+def home():
+    return "Flask App is Running!"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
