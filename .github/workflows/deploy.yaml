@@ -32,27 +32,27 @@ jobs:
         context: ./flask-webapp-service
         push: true
         tags: |
-          ${{ steps.login-ecr.outputs.registry }}/${{ vars.REGISTER_ECR_REPOSITORY }}:${{ github.sha }}
-          ${{ steps.login-ecr.outputs.registry }}/${{ vars.REGISTER_ECR_REPOSITORY }}:latest
+          ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
+          ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:latest
         platforms: linux/amd64
         provenance: false
 
     - name: Download task definition
       run: |
-        aws ecs describe-task-definition --task-definition ${{ vars.REGISTER_TASK_DEF }} --query taskDefinition > task-definition.json
+        aws ecs describe-task-definition --task-definition ${{ vars.TASK_DEF }} --query taskDefinition > task-definition.json
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: task-definition.json
-        container-name: ${{ vars.REGISTER_CONTAINER_NAME }}
-        image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.REGISTER_ECR_REPOSITORY }}:${{ github.sha }}
+        container-name: ${{ vars.CONTAINER_NAME }}
+        image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: ${{ vars.REGISTER_ECS_SERVICE }}
-        cluster: ${{ vars.REGISTER_ECS_CLUSTER }}
+        service: ${{ vars.ECS_SERVICE }}
+        cluster: ${{ vars.ECS_CLUSTER }}
         wait-for-service-stability: true

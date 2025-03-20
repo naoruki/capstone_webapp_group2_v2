@@ -20,41 +20,81 @@ DYNAMODB_TABLE = os.environ.get("DYNAMODB_TABLE", "Users")
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 table = dynamodb.Table(DYNAMODB_TABLE)
 
-# Simple HTML registration form
+# Bootstrap-styled Register Form
 REGISTER_FORM = """
 <!DOCTYPE html>
-<html>
-    <body>
-        <h1>Register User</h1>
-        <form method="POST" action="/register">
-            <label>Username:</label>
-            <input type="text" name="username" required/>
-            <br/><br/>
-            <label>Password:</label>
-            <input type="password" name="password" required/>
-            <br/><br/>
-            <button type="submit">Register</button>
-        </form>
-    </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Register</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card mt-5">
+                    <div class="card-header text-center">
+                        <h3>Register</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="/register">
+                            <div class="mb-3">
+                                <label class="form-label">Username:</label>
+                                <input type="text" name="username" class="form-control" required/>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Password:</label>
+                                <input type="password" name="password" class="form-control" required/>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Register</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
 </html>
 """
 
-# Simple HTML login form
+# Bootstrap-styled Login Form
 LOGIN_FORM = """
 <!DOCTYPE html>
-<html>
-    <body>
-        <h1>Login</h1>
-        <form method="POST" action="/login">
-            <label>Username:</label>
-            <input type="text" name="username" required/>
-            <br/><br/>
-            <label>Password:</label>
-            <input type="password" name="password" required/>
-            <br/><br/>
-            <button type="submit">Login</button>
-        </form>
-    </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card mt-5">
+                    <div class="card-header text-center">
+                        <h3>Login</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="/login">
+                            <div class="mb-3">
+                                <label class="form-label">Username:</label>
+                                <input type="text" name="username" class="form-control" required/>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Password:</label>
+                                <input type="password" name="password" class="form-control" required/>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">Login</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
 </html>
 """
 
@@ -62,16 +102,16 @@ LOGIN_FORM = """
 def register():
     if request.method == "GET":
         return render_template_string(REGISTER_FORM)
-
+    
     username = request.form.get("username")
     password = request.form.get("password")
-
+    
     if not username or not password:
         logger.warning("Username or password missing.")
         return "Username and password are required.", 400
-
+    
     hashed_password = generate_password_hash(password)
-
+    
     try:
         table.put_item(
             Item={
