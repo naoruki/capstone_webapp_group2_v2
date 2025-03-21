@@ -1,10 +1,10 @@
-name: Deploy Dev Flask Web App
+name: Deploy Dev/staging Flask Web App
 
 on:
   push:
     branches:
       - dev
-  workflow_dispatch:
+      - staging
 
 jobs:
   deploy:
