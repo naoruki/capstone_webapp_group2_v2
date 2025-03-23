@@ -27,6 +27,23 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ vars.AWS_REGION }}
 
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.5.0
+
+    - name: Terraform Init & Apply
+      run: |
+        terraform init
+        terraform apply -auto-approve
+
+    - name: Export Terraform Outputs
+      run: |
+        echo "ECS_CLUSTER=$(terraform output -raw ecs_cluster_name)" >> $GITHUB_ENV
+        echo "TASK_DEF=$(terraform output -raw ecs_task_family)" >> $GITHUB_ENV
+        echo "ECS_SERVICE=$(terraform output -raw ecs_service_name)" >> $GITHUB_ENV
+        echo "CONTAINER_NAME=$(terraform output -raw container_name)" >> $GITHUB_ENV
+
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
@@ -48,20 +65,20 @@ jobs:
 
     - name: Download task definition
       run: |
-        aws ecs describe-task-definition --task-definition ${{ vars.TASK_DEF }} --query taskDefinition > task-definition.json
+        aws ecs describe-task-definition --task-definition $TASK_DEF --query taskDefinition > task-definition.json
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: task-definition.json
-        container-name: ${{ vars.CONTAINER_NAME }}
+        container-name: $CONTAINER_NAME
         image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: ${{ vars.ECS_SERVICE }}
-        cluster: ${{ vars.ECS_CLUSTER }}
+        service: $ECS_SERVICE
+        cluster: $ECS_CLUSTER
         wait-for-service-stability: true
