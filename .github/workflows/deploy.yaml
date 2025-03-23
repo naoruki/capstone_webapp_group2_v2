@@ -33,9 +33,20 @@ jobs:
     - name: Download Terraform Outputs from S3
       run: |
         aws s3 cp s3://${{ secrets.S3_BUCKET }}/${{ secrets.TF_OUTPUT_PATH }} tf_outputs.json
+        ls -lah  # Debugging step
+
+    - name: Debug Workflow Directory
+      run: |
+        pwd
+        ls -lah
 
     - name: Extract Terraform Outputs
       run: |
+        if [[ ! -f tf_outputs.json ]]; then
+          echo "Error: tf_outputs.json file not found!"
+          exit 1
+        fi
+
         ECS_CLUSTER=$(jq -r '.ecs_cluster_name.value' tf_outputs.json)
         TASK_DEF=$(jq -r '.ecs_task_family.value' tf_outputs.json)
         ECS_SERVICE=$(jq -r '.ecs_service_name.value' tf_outputs.json)
