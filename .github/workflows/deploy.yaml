@@ -74,8 +74,14 @@ jobs:
         echo "DYNAMODB_TABLE=$DYNAMODB_TABLE" >> $GITHUB_ENV
         echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_ENV
 
-    - name: Debug ECR_REPOSITORY
-      run: echo "ECR_REPOSITORY is ${{ env.ECR_REPOSITORY }}"
+    - name: Debug ECS Variables
+      run: |
+        echo "ECS_CLUSTER=${{ env.ECS_CLUSTER }}"
+        echo "TASK_DEF=${{ env.TASK_DEF }}"
+        echo "ECS_SERVICE=${{ env.ECS_SERVICE }}"
+        echo "CONTAINER_NAME=${{ env.CONTAINER_NAME }}"
+        echo "DYNAMODB_TABLE=${{ env.DYNAMODB_TABLE }}"
+        echo "ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}"
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -96,16 +102,22 @@ jobs:
         platforms: linux/amd64
         provenance: false
 
+    - name: Debug Task Definition Name
+      run: echo "TASK_DEF is ${{ env.TASK_DEF }}"
+
     - name: Download Task Definition
       run: |
         aws ecs describe-task-definition --task-definition $TASK_DEF --query taskDefinition > task-definition.json
+
+    - name: Debug Task Definition JSON
+      run: cat task-definition.json
 
     - name: Update ECS Task Definition with New Image
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: task-definition.json
-        container-name: $CONTAINER_NAME
+        container-name: "staging-container"  # Hardcoded for debugging
         image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
 
     - name: Deploy Amazon ECS Task Definition
