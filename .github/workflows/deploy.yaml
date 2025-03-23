@@ -49,6 +49,7 @@ jobs:
         ECS_SERVICE=$(awk -F ' = ' '/ecs_service_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
         CONTAINER_NAME=$(awk -F ' = ' '/container_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
         DYNAMODB_TABLE=$(awk -F ' = ' '/dynamodb_table_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
+        ECR_REPOSITORY=$(awk -F ' = ' '/ecr_repository/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
 
         # Validate extracted values
         echo "Extracted values:"
@@ -57,6 +58,7 @@ jobs:
         echo "ECS_SERVICE=$ECS_SERVICE"
         echo "CONTAINER_NAME=$CONTAINER_NAME"
         echo "DYNAMODB_TABLE=$DYNAMODB_TABLE"
+        echo "ECR_REPOSITORY=$ECR_REPOSITORY"
 
         # Ensure all variables have been set correctly
         if [[ -z "$ECS_CLUSTER" || -z "$TASK_DEF" || -z "$ECS_SERVICE" || -z "$CONTAINER_NAME" || -z "$DYNAMODB_TABLE" ]]; then
@@ -70,6 +72,7 @@ jobs:
         echo "ECS_SERVICE=$ECS_SERVICE" >> $GITHUB_ENV
         echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
         echo "DYNAMODB_TABLE=$DYNAMODB_TABLE" >> $GITHUB_ENV
+        echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_ENV
 
     - name: Login to Amazon ECR
       id: login-ecr
