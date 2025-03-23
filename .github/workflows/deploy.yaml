@@ -33,27 +33,36 @@ jobs:
         echo "S3_BUCKET=${{ secrets.S3_BUCKET }}"
         echo "TF_OUTPUT_PATH=${{ secrets.TF_OUTPUT_PATH }}"
 
-    - name: Install jq
-      run: sudo apt-get update && sudo apt-get install -y jq
-
     - name: Download Terraform Outputs from S3
       run: |
-        aws s3 cp s3://${{ secrets.S3_BUCKET }}/${{ secrets.TF_OUTPUT_PATH }} tf_outputs.json
+        aws s3 cp s3://${{ secrets.S3_BUCKET }}/${{ secrets.TF_OUTPUT_PATH }} tf_outputs.txt
         ls -lah  # Debugging step to check if the file exists
 
     - name: Extract Terraform Outputs
       run: |
-        ECS_CLUSTER=$(jq -r '.ecs_cluster_name.value' tf_outputs.json)
-        TASK_DEF=$(jq -r '.ecs_task_family.value' tf_outputs.json)
-        ECS_SERVICE=$(jq -r '.ecs_service_name.value' tf_outputs.json)
-        CONTAINER_NAME=$(jq -r '.container_name.value' tf_outputs.json)
-        ECR_REPOSITORY=$(jq -r '.ecr_repository.value' tf_outputs.json)
+        # Remove Terraform debug messages and extract key-value pairs
+        grep ' = ' tf_outputs.txt | sed 's/^.*output//' > cleaned_tf_outputs.txt
 
+        # Extract values from cleaned file
+        ECS_CLUSTER=$(grep "ecs_cluster_name" cleaned_tf_outputs.txt | awk -F ' = ' '{print $2}' | tr -d '"')
+        TASK_DEF=$(grep "ecs_task_family" cleaned_tf_outputs.txt | awk -F ' = ' '{print $2}' | tr -d '"')
+        ECS_SERVICE=$(grep "ecs_service_name" cleaned_tf_outputs.txt | awk -F ' = ' '{print $2}' | tr -d '"')
+        CONTAINER_NAME=$(grep "container_name" cleaned_tf_outputs.txt | awk -F ' = ' '{print $2}' | tr -d '"')
+        DYNAMODB_TABLE=$(grep "dynamodb_table_name" cleaned_tf_outputs.txt | awk -F ' = ' '{print $2}' | tr -d '"')
+
+        echo "Extracted values:"
+        echo "ECS_CLUSTER=$ECS_CLUSTER"
+        echo "TASK_DEF=$TASK_DEF"
+        echo "ECS_SERVICE=$ECS_SERVICE"
+        echo "CONTAINER_NAME=$CONTAINER_NAME"
+        echo "DYNAMODB_TABLE=$DYNAMODB_TABLE"
+
+        # Save to GitHub Environment Variables
         echo "ECS_CLUSTER=$ECS_CLUSTER" >> $GITHUB_ENV
         echo "TASK_DEF=$TASK_DEF" >> $GITHUB_ENV
         echo "ECS_SERVICE=$ECS_SERVICE" >> $GITHUB_ENV
         echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
-        echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_ENV
+        echo "DYNAMODB_TABLE=$DYNAMODB_TABLE" >> $GITHUB_ENV
 
     - name: Login to Amazon ECR
       id: login-ecr
