@@ -1,6 +1,14 @@
 name: Deploy Flask Web App
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select environment"
+        required: true
+        type: choice
+        options:
+          - staging
 
 jobs:
   deploy:
