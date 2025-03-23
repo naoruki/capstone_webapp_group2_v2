@@ -115,3 +115,7 @@ jobs:
         service: $ECS_SERVICE
         cluster: $ECS_CLUSTER
         wait-for-service-stability: true
+
+    - name: Scale Up ECS Service
+      run: |
+        aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --desired-count 1
