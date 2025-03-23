@@ -25,24 +25,28 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v2
-      with:
-        terraform_version: 1.5.0
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
 
-    - name: Terraform Init & Apply
+    - name: Download Terraform Outputs from S3
       run: |
-        terraform init
-        terraform apply -auto-approve
+        aws s3 cp s3://${{ secrets.S3_BUCKET }}/${{ secrets.TF_OUTPUT_PATH }} tf_outputs.json
 
-    - name: Export Terraform Outputs
+    - name: Extract Terraform Outputs
       run: |
-        echo "ECS_CLUSTER=$(terraform output -raw ecs_cluster_name)" >> $GITHUB_ENV
-        echo "TASK_DEF=$(terraform output -raw ecs_task_family)" >> $GITHUB_ENV
-        echo "ECS_SERVICE=$(terraform output -raw ecs_service_name)" >> $GITHUB_ENV
-        echo "CONTAINER_NAME=$(terraform output -raw container_name)" >> $GITHUB_ENV
+        ECS_CLUSTER=$(jq -r '.ecs_cluster_name.value' tf_outputs.json)
+        TASK_DEF=$(jq -r '.ecs_task_family.value' tf_outputs.json)
+        ECS_SERVICE=$(jq -r '.ecs_service_name.value' tf_outputs.json)
+        CONTAINER_NAME=$(jq -r '.container_name.value' tf_outputs.json)
+        ECR_REPOSITORY=$(jq -r '.ecr_repository.value' tf_outputs.json)
+
+        echo "ECS_CLUSTER=$ECS_CLUSTER" >> $GITHUB_ENV
+        echo "TASK_DEF=$TASK_DEF" >> $GITHUB_ENV
+        echo "ECS_SERVICE=$ECS_SERVICE" >> $GITHUB_ENV
+        echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
+        echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_ENV
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -58,8 +62,8 @@ jobs:
         context: ./flask-webapp-service
         push: true
         tags: |
-          ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
-          ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:latest
+          ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
+          ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:latest
         platforms: linux/amd64
         provenance: false
 
@@ -73,7 +77,7 @@ jobs:
       with:
         task-definition: task-definition.json
         container-name: $CONTAINER_NAME
-        image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
+        image: ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
