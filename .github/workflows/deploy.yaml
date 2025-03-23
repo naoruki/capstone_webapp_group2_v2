@@ -15,7 +15,7 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -27,26 +27,22 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
 
+    - name: Debug Secrets and Variables
+      run: |
+        echo "Checking Secrets and Variables..."
+        echo "S3_BUCKET=${{ secrets.S3_BUCKET }}"
+        echo "TF_OUTPUT_PATH=${{ secrets.TF_OUTPUT_PATH }}"
+
     - name: Install jq
       run: sudo apt-get update && sudo apt-get install -y jq
 
     - name: Download Terraform Outputs from S3
       run: |
         aws s3 cp s3://${{ secrets.S3_BUCKET }}/${{ secrets.TF_OUTPUT_PATH }} tf_outputs.json
-        ls -lah  # Debugging step
-
-    - name: Debug Workflow Directory
-      run: |
-        pwd
-        ls -lah
+        ls -lah  # Debugging step to check if the file exists
 
     - name: Extract Terraform Outputs
       run: |
-        if [[ ! -f tf_outputs.json ]]; then
-          echo "Error: tf_outputs.json file not found!"
-          exit 1
-        fi
-
         ECS_CLUSTER=$(jq -r '.ecs_cluster_name.value' tf_outputs.json)
         TASK_DEF=$(jq -r '.ecs_task_family.value' tf_outputs.json)
         ECS_SERVICE=$(jq -r '.ecs_service_name.value' tf_outputs.json)
