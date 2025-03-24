@@ -16,7 +16,12 @@ app = Flask(__name__)
 
 # AWS Configuration
 AWS_REGION = os.environ["AWS_REGION"]
-DYNAMODB_TABLE = os.environ.get("DYNAMODB_TABLE", "Users")
+DYNAMODB_TABLE = os.getenv("DYNAMODB_TABLE")
+
+if not DYNAMODB_TABLE:
+    raise ValueError("Error: DYNAMODB_TABLE environment variable is not set!")
+
+
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 table = dynamodb.Table(DYNAMODB_TABLE)
 

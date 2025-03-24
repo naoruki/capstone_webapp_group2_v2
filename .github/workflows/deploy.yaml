@@ -125,6 +125,9 @@ jobs:
         task-definition: task-definition.json
         container-name: ${{ env.CONTAINER_NAME }}
         image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+        environment-variables: |
+          DYNAMODB_TABLE=${{ env.DYNAMODB_TABLE }}
+
 
     - name: Deploy Amazon ECS Task Definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
