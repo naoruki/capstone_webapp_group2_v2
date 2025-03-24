@@ -1,7 +1,7 @@
 import os
 import logging
 import boto3
-from flask import Flask, request, render_template_string, jsonify
+from flask import Flask, request, render_template_string, jsonify, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Logging setup
@@ -122,26 +122,47 @@ def register():
     hashed_password = generate_password_hash(password)
     
     try:
-        table.put_item(Item={"username": username, "password": hashed_password})
+        table.put_item(
+            Item={
+                "username": username,
+                "password": hashed_password  # Store hashed password
+            }
+        )
         logger.info("User '%s' registered successfully.", username)
-
-        # SweetAlert2 success popup after registration
-        return render_template_string("""
-            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-            <script>
-                Swal.fire({
-                    title: "Success!",
-                    text: "User '{{ username }}' registered successfully!",
-                    icon: "success"
-                }).then(() => {
-                    window.location.href = "/login"; // Redirect to login page
-                });
-            </script>
-        """, username=username)
-        
+        return redirect(url_for("success", username=username))
     except Exception as exc:
         logger.exception("Error registering user in DynamoDB.")
         return f"Error registering user: {str(exc)}", 500
+
+@app.route("/success")
+def success():
+    username = request.args.get("username", "User")
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Success</title>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    </head>
+    <body>
+        <script>
+            Swal.fire({
+                title: "Success!",
+                text: "User '{{ username | safe }}' registered successfully!",
+                icon: "success",
+                timer: 3000,  // Auto-close after 3 seconds
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = "/login"; // Redirect to login page
+            });
+        </script>
+    </body>
+    </html>
+    """, username=username)
+
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
