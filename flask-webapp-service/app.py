@@ -34,6 +34,8 @@ REGISTER_FORM = """
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Register</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </head>
 <body class="bg-light">
     <div class="container">
@@ -73,6 +75,8 @@ LOGIN_FORM = """
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </head>
 <body class="bg-light">
     <div class="container">
@@ -118,14 +122,23 @@ def register():
     hashed_password = generate_password_hash(password)
     
     try:
-        table.put_item(
-            Item={
-                "username": username,
-                "password": hashed_password  # Store hashed password
-            }
-        )
+        table.put_item(Item={"username": username, "password": hashed_password})
         logger.info("User '%s' registered successfully.", username)
-        return f"User '{username}' registered successfully!"
+
+        # SweetAlert2 success popup after registration
+        return render_template_string("""
+            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+            <script>
+                Swal.fire({
+                    title: "Success!",
+                    text: "User '{{ username }}' registered successfully!",
+                    icon: "success"
+                }).then(() => {
+                    window.location.href = "/login"; // Redirect to login page
+                });
+            </script>
+        """, username=username)
+        
     except Exception as exc:
         logger.exception("Error registering user in DynamoDB.")
         return f"Error registering user: {str(exc)}", 500
