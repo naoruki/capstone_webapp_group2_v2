@@ -129,13 +129,13 @@ def register():
             }
         )
         logger.info("User '%s' registered successfully.", username)
-        return redirect(url_for("success", username=username))
+        return redirect(url_for("reg-success", username=username))
     except Exception as exc:
         logger.exception("Error registering user in DynamoDB.")
         return f"Error registering user: {str(exc)}", 500
 
-@app.route("/success")
-def success():
+@app.route("/reg-success")
+def regSuccess():
     username = request.args.get("username", "User")
     return render_template_string("""
     <!DOCTYPE html>
@@ -152,7 +152,7 @@ def success():
                 title: "Success!",
                 text: "User '{{ username | safe }}' registered successfully!",
                 icon: "success",
-                timer: 3000,  // Auto-close after 3 seconds
+                timer: 5000,  // Auto-close after 5 seconds
                 showConfirmButton: false
             }).then(() => {
                 window.location.href = "/login"; // Redirect to login page
@@ -190,3 +190,4 @@ def login():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
+    
