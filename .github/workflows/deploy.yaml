@@ -30,12 +30,12 @@ jobs:
     - name: Debug Secrets and Variables
       run: |
         echo "Checking Secrets and Variables..."
-        echo "S3_BUCKET=${{ secrets.S3_BUCKET }}"
-        echo "TF_OUTPUT_PATH=${{ secrets.TF_OUTPUT_PATH }}"
+        echo "S3_BUCKET=${{ vars.S3_BUCKET }}"
+        echo "TF_OUTPUT_PATH=${{ vars.TF_OUTPUT_PATH }}"
 
     - name: Download Terraform Outputs from S3
       run: |
-        aws s3 cp s3://${{ secrets.S3_BUCKET }}/${{ secrets.TF_OUTPUT_PATH }} tf_outputs.txt
+        aws s3 cp s3://${{ vars.S3_BUCKET }}/${{ vars.TF_OUTPUT_PATH }} tf_outputs.txt
         ls -lah  # Debugging step to check if the file exists
 
     - name: Extract Terraform Outputs
