@@ -129,12 +129,12 @@ def register():
             }
         )
         logger.info("User '%s' registered successfully.", username)
-        return redirect(url_for("reg-success", username=username))
+        return redirect(url_for("regSuccess", username=username))
     except Exception as exc:
         logger.exception("Error registering user in DynamoDB.")
         return f"Error registering user: {str(exc)}", 500
 
-@app.route("/reg-success")
+@app.route("/regSuccess")
 def regSuccess():
     username = request.args.get("username", "User")
     return render_template_string("""
