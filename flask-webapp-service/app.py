@@ -183,10 +183,40 @@ def login():
         if not user or not check_password_hash(user["password"], password):
             return jsonify({"error": "Invalid credentials"}), 401
 
-        return jsonify({"message": "Login successful"}), 200
+        # return jsonify({"message": "Login successful"}), 200
+        return redirect(url_for("loginSuccess", username=username))
     except Exception as e:
         logger.error(f"Error logging in: {str(e)}")
         return jsonify({"error": "Could not log in"}), 500
+
+@app.route("/loginSuccess")
+def loginSuccess():
+    username = request.args.get("username", "User")
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Success</title>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    </head>
+    <body>
+        <script>
+            Swal.fire({
+                title: "Success!",
+                text: "User '{{ username | safe }}' login successfully!",
+                icon: "success",
+                timer: 5000,  // Auto-close after 5 seconds
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = "/login"; // Redirect to login page
+            });
+        </script>
+    </body>
+    </html>
+    """, username=username)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
