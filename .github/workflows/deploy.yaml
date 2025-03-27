@@ -38,8 +38,8 @@ jobs:
 
     - name: Download Terraform Outputs from S3
       run: |
-        S3_PATH="${{ vars.OUTPUT_PATH }}/${{ github.event.inputs.environment }}/tf_output.txt"
-        aws s3 cp s3://${{ vars.S3_BUCKET }}/${S3_PATH}/tf_output.txt
+        S3_PATH="${{ vars.OUTPUT_PATH }}/${{ github.event.inputs.environment }}/tf_output"
+        aws s3 cp s3://${{ vars.S3_BUCKET }}/${S3_PATH} tf_output.txt
         ls -lah  # Debugging step to check if the file exists
 
     - name: Extract Terraform Outputs
