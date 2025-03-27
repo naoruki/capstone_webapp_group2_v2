@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - staging
+          - production
 
 jobs:
   deploy:
@@ -35,17 +36,18 @@ jobs:
 
     - name: Download Terraform Outputs from S3
       run: |
-        aws s3 cp s3://${{ vars.S3_BUCKET }}/${{ vars.OUTPUT_PATH }} tf_outputs.txt
+        S3_PATH="${{ vars.OUTPUT_PATH }}/${{ github.event.inputs.environment }}/tf_output"
+        aws s3 cp s3://$S3_BUCKET/$S3_PATH tf_output
         ls -lah  # Debugging step to check if the file exists
 
     - name: Extract Terraform Outputs
       run: |
         # Debug the extracted raw Terraform output
         echo "Raw Terraform Outputs:"
-        cat tf_outputs.txt
+        cat tf_output
 
         # Filter only key-value lines and clean unwanted characters
-        grep ' = ' tf_outputs.txt | grep -v '::debug::' | grep -v 'command' | grep -v 'exitcode' | grep -v 'stderr' > cleaned_tf_outputs.txt
+        grep ' = ' tf_output | grep -v '::debug::' | grep -v 'command' | grep -v 'exitcode' | grep -v 'stderr' > cleaned_tf_outputs.txt
 
         # Read values into variables
         ECS_CLUSTER=$(awk -F ' = ' '/ecs_cluster_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
@@ -127,7 +129,6 @@ jobs:
         image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.event.inputs.environment }}
         environment-variables: |
           DYNAMODB_TABLE=${{ env.DYNAMODB_TABLE }}
-
 
     - name: Deploy Amazon ECS Task Definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
