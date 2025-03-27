@@ -12,6 +12,7 @@ on:
           - production
 env:
   AWS_REGION: ap-southeast-1
+  S3_FILE_PATH: tf_output.txt 
 
 jobs:
   deploy:
@@ -35,21 +36,22 @@ jobs:
         echo "Checking Secrets and Variables..."
         echo "S3_BUCKET=${{ vars.S3_BUCKET }}"
         echo "OUTPUT_PATH=${{ vars.OUTPUT_PATH }}"
+        echo "S3_FILE_PATH"=${{ env.S3_FILE_PATH }}"
 
     - name: Download Terraform Outputs from S3
       run: |
         S3_PATH="${{ vars.OUTPUT_PATH }}/${{ github.event.inputs.environment }}/tf_output"
-        aws s3 cp s3://${{ vars.S3_BUCKET }}/${S3_PATH} tf_output.txt
+        aws s3 cp s3://${{ vars.S3_BUCKET }}/${S3_PATH} ${{ env.S3_FILE_PATH }}
         ls -lah  # Debugging step to check if the file exists
 
     - name: Extract Terraform Outputs
       run: |
         # Debug the extracted raw Terraform output
         echo "Raw Terraform Outputs:"
-        cat tf_output
+        cat ${{ env.S3_FILE_PATH }}
 
         # Filter only key-value lines and clean unwanted characters
-        grep ' = ' tf_output | grep -v '::debug::' | grep -v 'command' | grep -v 'exitcode' | grep -v 'stderr' > cleaned_tf_outputs.txt
+        grep ' = ' ${{ env.S3_FILE_PATH }} | grep -v '::debug::' | grep -v 'command' | grep -v 'exitcode' | grep -v 'stderr' > cleaned_tf_outputs.txt
 
         # Read values into variables
         ECS_CLUSTER=$(awk -F ' = ' '/ecs_cluster_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
