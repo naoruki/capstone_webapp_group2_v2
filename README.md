@@ -1,2 +1,2 @@
 # capstone_registerapp-demo
-Register web application flask
+Web application flask
