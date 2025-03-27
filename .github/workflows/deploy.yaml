@@ -36,7 +36,7 @@ jobs:
         echo "Checking Secrets and Variables..."
         echo "S3_BUCKET=${{ vars.S3_BUCKET }}"
         echo "OUTPUT_PATH=${{ vars.OUTPUT_PATH }}"
-        echo "S3_FILE_PATH"=${{ env.S3_FILE_PATH }}"
+        echo "S3_FILE_PATH=${{ env.S3_FILE_PATH }}"
 
     - name: Download Terraform Outputs from S3
       run: |
