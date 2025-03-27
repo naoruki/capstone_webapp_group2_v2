@@ -1,7 +1,7 @@
 import os
 import logging
 import boto3
-from flask import Flask, request, render_template_string, jsonify
+from flask import Flask, request, render_template_string, jsonify, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Logging setup
@@ -16,7 +16,12 @@ app = Flask(__name__)
 
 # AWS Configuration
 AWS_REGION = os.environ["AWS_REGION"]
-DYNAMODB_TABLE = os.environ.get("DYNAMODB_TABLE", "Users")
+DYNAMODB_TABLE = os.getenv("DYNAMODB_TABLE")
+
+if not DYNAMODB_TABLE:
+    raise ValueError("Error: DYNAMODB_TABLE environment variable is not set!")
+
+
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 table = dynamodb.Table(DYNAMODB_TABLE)
 
@@ -29,6 +34,8 @@ REGISTER_FORM = """
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Register</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </head>
 <body class="bg-light">
     <div class="container">
@@ -36,7 +43,7 @@ REGISTER_FORM = """
             <div class="col-md-6">
                 <div class="card mt-5">
                     <div class="card-header text-center">
-                        <h3>Register</h3>
+                        <h3>New Register</h3>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="/register">
@@ -68,6 +75,8 @@ LOGIN_FORM = """
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </head>
 <body class="bg-light">
     <div class="container">
@@ -120,10 +129,40 @@ def register():
             }
         )
         logger.info("User '%s' registered successfully.", username)
-        return f"User '{username}' registered successfully!"
+        return redirect(url_for("regSuccess", username=username))
     except Exception as exc:
         logger.exception("Error registering user in DynamoDB.")
         return f"Error registering user: {str(exc)}", 500
+
+@app.route("/regSuccess")
+def regSuccess():
+    username = request.args.get("username", "User")
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Success</title>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    </head>
+    <body>
+        <script>
+            Swal.fire({
+                title: "Success!",
+                text: "User '{{ username | safe }}' registered successfully!",
+                icon: "success",
+                timer: 5000,  // Auto-close after 5 seconds
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = "/login"; // Redirect to login page
+            });
+        </script>
+    </body>
+    </html>
+    """, username=username)
+
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -144,10 +183,41 @@ def login():
         if not user or not check_password_hash(user["password"], password):
             return jsonify({"error": "Invalid credentials"}), 401
 
-        return jsonify({"message": "Login successful"}), 200
+        # return jsonify({"message": "Login successful"}), 200
+        return redirect(url_for("loginSuccess", username=username))
     except Exception as e:
         logger.error(f"Error logging in: {str(e)}")
         return jsonify({"error": "Could not log in"}), 500
 
+@app.route("/loginSuccess")
+def loginSuccess():
+    username = request.args.get("username", "User")
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Success</title>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    </head>
+    <body>
+        <script>
+            Swal.fire({
+                title: "Success!",
+                text: "User '{{ username | safe }}' login successfully!",
+                icon: "success",
+                timer: 5000,  // Auto-close after 5 seconds
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = "/login"; // Redirect to login page
+            });
+        </script>
+    </body>
+    </html>
+    """, username=username)
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
+    
