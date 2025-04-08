@@ -50,8 +50,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-          echo "test"
-
       - name: Download Terraform Outputs from S3
         if: steps.env.outputs.env != 'skip'
         run: |
