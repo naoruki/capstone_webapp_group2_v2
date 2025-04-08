@@ -1,157 +1,138 @@
-name: Deploy Flask Web App
+name: Auto Deploy Flask Web App
 
 on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Select environment"
-        required: true
-        type: choice
-        options:
-          - dev
-          - staging
-          - production
+  pull_request:
+    types: [closed]
+
 env:
   AWS_REGION: ap-southeast-1
-  S3_FILE_PATH: tf_output.txt 
+  S3_FILE_PATH: tf_output.txt
 
 jobs:
   deploy:
-    name: Deploy
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+      - name: Determine Deployment Environment
+        id: env
+        run: |
+          BASE=${{ github.base_ref }}
+          HEAD=${{ github.head_ref }}
 
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+          echo "Base branch: $BASE"
+          echo "Head branch: $HEAD"
 
-    - name: Debug Secrets and Variables
-      run: |
-        echo "Checking Secrets and Variables..."
-        echo "S3_BUCKET=${{ vars.S3_BUCKET }}"
-        echo "OUTPUT_PATH=${{ vars.OUTPUT_PATH }}"
-        echo "S3_FILE_PATH=${{ env.S3_FILE_PATH }}"
+          if [[ "$BASE" == "dev" && ( "$HEAD" == feature-* || "$HEAD" == bug-* ) ]]; then
+            echo "env=dev" >> $GITHUB_OUTPUT
+          elif [[ "$BASE" == "staging" && "$HEAD" == "dev" ]]; then
+            echo "env=staging" >> $GITHUB_OUTPUT
+          elif [[ "$BASE" == "main" && "$HEAD" == "staging" ]]; then
+            echo "env=production" >> $GITHUB_OUTPUT
+          else
+            echo "No deployment required for this branch combination."
+          echo "env=skip" >> $GITHUB_OUTPUT
+          fi
 
-    - name: Download Terraform Outputs from S3
-      run: |
-        S3_PATH="${{ vars.OUTPUT_PATH }}/${{ github.event.inputs.environment }}/tf_output"
-        aws s3 cp s3://${{ vars.S3_BUCKET }}/${S3_PATH} ${{ env.S3_FILE_PATH }}
-        ls -lah  # Debugging step to check if the file exists
+      - name: Skip if no deployment needed
+        if: steps.env.outputs.env == 'skip'
+        run: echo "Skipping deployment."
 
-    - name: Extract Terraform Outputs
-      run: |
-        # Debug the extracted raw Terraform output
-        echo "Raw Terraform Outputs:"
-        cat ${{ env.S3_FILE_PATH }}
+      - name: Checkout Repository
+        if: steps.env.outputs.env != 'skip'
+        uses: actions/checkout@v3
 
-        # Filter only key-value lines and clean unwanted characters
-        grep ' = ' ${{ env.S3_FILE_PATH }} | grep -v '::debug::' | grep -v 'command' | grep -v 'exitcode' | grep -v 'stderr' > cleaned_tf_outputs.txt
+      - name: Configure AWS Credentials
+        if: steps.env.outputs.env != 'skip'
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-        # Read values into variables
-        ECS_CLUSTER=$(awk -F ' = ' '/ecs_cluster_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
-        TASK_DEF=$(awk -F ' = ' '/ecs_task_family/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
-        ECS_SERVICE=$(awk -F ' = ' '/ecs_service_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
-        CONTAINER_NAME=$(awk -F ' = ' '/container_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
-        CONTAINER_NAME=$(echo $CONTAINER_NAME | xargs) # Trim spaces
-        DYNAMODB_TABLE=$(awk -F ' = ' '/dynamodb_table_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
-        ECR_REPOSITORY=$(awk -F ' = ' '/ecr_repository/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
+      - name: Download Terraform Outputs from S3
+        if: steps.env.outputs.env != 'skip'
+        run: |
+          S3_PATH="${{ vars.OUTPUT_PATH }}/${{ steps.env.outputs.env }}/tf_output"
+          aws s3 cp s3://${{ vars.S3_BUCKET }}/${S3_PATH} ${{ env.S3_FILE_PATH }}
+          ls -lah
 
-        # Debugging extracted variables
-        echo "Extracted values:"
-        echo "ECS_CLUSTER='$ECS_CLUSTER'"
-        echo "TASK_DEF='$TASK_DEF'"
-        echo "ECS_SERVICE='$ECS_SERVICE'"
-        echo "CONTAINER_NAME='$CONTAINER_NAME'"
-        echo "DYNAMODB_TABLE='$DYNAMODB_TABLE'"
-        echo "ECR_REPOSITORY='$ECR_REPOSITORY'"
+      - name: Extract Terraform Outputs
+        if: steps.env.outputs.env != 'skip'
+        run: |
+          grep ' = ' ${{ env.S3_FILE_PATH }} | grep -v '::debug::' | grep -v 'command' | grep -v 'exitcode' | grep -v 'stderr' > cleaned_tf_outputs.txt
 
-        # Ensure all variables have been set correctly
-        if [[ -z "$ECS_CLUSTER" || -z "$TASK_DEF" || -z "$ECS_SERVICE" || -z "$CONTAINER_NAME" || -z "$DYNAMODB_TABLE" || -z "$ECR_REPOSITORY" ]]; then
-          echo "Error: Missing required values from Terraform output"
-          exit 1
-        fi
+          ECS_CLUSTER=$(awk -F ' = ' '/ecs_cluster_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
+          TASK_DEF=$(awk -F ' = ' '/ecs_task_family/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
+          ECS_SERVICE=$(awk -F ' = ' '/ecs_service_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
+          CONTAINER_NAME=$(awk -F ' = ' '/container_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
+          DYNAMODB_TABLE=$(awk -F ' = ' '/dynamodb_table_name/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
+          ECR_REPOSITORY=$(awk -F ' = ' '/ecr_repository/ {print $2}' cleaned_tf_outputs.txt | tr -d '"')
 
-        # Save to GitHub Environment Variables
-        echo "ECS_CLUSTER=$ECS_CLUSTER" >> $GITHUB_ENV
-        echo "TASK_DEF=$TASK_DEF" >> $GITHUB_ENV
-        echo "ECS_SERVICE=$ECS_SERVICE" >> $GITHUB_ENV
-        echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
-        echo "DYNAMODB_TABLE=$DYNAMODB_TABLE" >> $GITHUB_ENV
-        echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_ENV
+          echo "ECS_CLUSTER=$ECS_CLUSTER" >> $GITHUB_ENV
+          echo "TASK_DEF=$TASK_DEF" >> $GITHUB_ENV
+          echo "ECS_SERVICE=$ECS_SERVICE" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
+          echo "DYNAMODB_TABLE=$DYNAMODB_TABLE" >> $GITHUB_ENV
+          echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_ENV
 
-    - name: Debug ECR_REPOSITORY and CONTAINER_NAME
-      run: |
-        echo "ECR_REPOSITORY is ${{ env.ECR_REPOSITORY }}"
-        echo "CONTAINER_NAME is ${{ env.CONTAINER_NAME }}"
+      - name: Login to Amazon ECR
+        if: steps.env.outputs.env != 'skip'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
+      - name: Set up Docker Buildx
+        if: steps.env.outputs.env != 'skip'
+        uses: docker/setup-buildx-action@v2
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Build and Push Docker Image to Amazon ECR
+        if: steps.env.outputs.env != 'skip'
+        id: build-image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./flask-webapp-service
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.env.outputs.env }}
+          platforms: linux/amd64
+          provenance: false
 
-    - name: Build and Push Docker Image to Amazon ECR
-      id: build-image
-      uses: docker/build-push-action@v6
-      with:
-        context: ./flask-webapp-service
-        push: true
-        tags: |
-          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.event.inputs.environment }}
-        platforms: linux/amd64
-        provenance: false
+      - name: Download Task Definition
+        if: steps.env.outputs.env != 'skip'
+        run: |
+          aws ecs describe-task-definition --task-definition $TASK_DEF --query taskDefinition > task-definition.json
 
-    - name: Download Task Definition
-      run: |
-        aws ecs describe-task-definition --task-definition $TASK_DEF --query taskDefinition > task-definition.json
-        echo "Downloaded task-definition.json:"
-        cat task-definition.json # Debugging step to verify task definition
-
-    - name: Validate Task Definition
-      run: |
-        CONTAINER_FOUND=$(jq '.containerDefinitions[] | select(.name == "${{ env.CONTAINER_NAME }}")' task-definition.json)
-        if [[ -z "$CONTAINER_FOUND" ]]; then
-          echo "Error: Container '${{ env.CONTAINER_NAME }}' not found in task definition!"
-          exit 1
-        fi
-        echo "Container definition validated successfully."
-
-    - name: Update ECS Task Definition with New Image
-      id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: task-definition.json
-        container-name: ${{ env.CONTAINER_NAME }}
-        image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.event.inputs.environment }}
-        environment-variables: |
-          DYNAMODB_TABLE=${{ env.DYNAMODB_TABLE }}
-
-    - name: Deploy Amazon ECS Task Definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: ${{ env.ECS_SERVICE }}
-        cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true
-
-    - name: Scale Up ECS Service
-      run: |
-          echo "Scaling up ECS Service..."
-          echo "ECS_CLUSTER=${{ env.ECS_CLUSTER }}"
-          echo "ECS_SERVICE=${{ env.ECS_SERVICE }}"
-          
-          if [[ -z "${{ env.ECS_CLUSTER }}" || -z "${{ env.ECS_SERVICE }}" ]]; then
-            echo "Error: ECS_CLUSTER or ECS_SERVICE is not set"
+      - name: Validate Task Definition
+        if: steps.env.outputs.env != 'skip'
+        run: |
+          CONTAINER_FOUND=$(jq '.containerDefinitions[] | select(.name == "${{ env.CONTAINER_NAME }}")' task-definition.json)
+          if [[ -z "$CONTAINER_FOUND" ]]; then
+            echo "Error: Container '${{ env.CONTAINER_NAME }}' not found!"
             exit 1
           fi
-      
+
+      - name: Update ECS Task Definition with New Image
+        if: steps.env.outputs.env != 'skip'
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.env.outputs.env }}
+          environment-variables: |
+            DYNAMODB_TABLE=${{ env.DYNAMODB_TABLE }}
+
+      - name: Deploy Amazon ECS Task Definition
+        if: steps.env.outputs.env != 'skip'
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Scale Up ECS Service
+        if: steps.env.outputs.env != 'skip'
+        run: |
           aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --desired-count 1
