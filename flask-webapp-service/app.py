@@ -43,7 +43,7 @@ REGISTER_FORM = """
             <div class="col-md-6">
                 <div class="card mt-5">
                     <div class="card-header text-center">
-                        <h3>Register</h3>
+                        <h3>New Register</h3>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="/register">
