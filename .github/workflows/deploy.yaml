@@ -23,11 +23,11 @@ jobs:
           echo "Base branch: $BASE"
           echo "Head branch: $HEAD"
 
-          if [[ "$BASE" == "dev" && ( "$HEAD" == feature-* || "$HEAD" == bug-* ) ]]; then
-            echo "env=dev" >> $GITHUB_OUTPUT
-          elif [[ "$BASE" == "staging" && "$HEAD" == "dev" ]]; then
+          if [[ "$BASE" == "staging" && "$HEAD" == "dev" ]]; then
+            echo "::notice title=Environment Detected::Staging deployment triggered"
             echo "env=staging" >> $GITHUB_OUTPUT
           elif [[ "$BASE" == "main" && "$HEAD" == "staging" ]]; then
+            echo "::notice title=Environment Detected::Production deployment triggered"
             echo "env=production" >> $GITHUB_OUTPUT
           else
             echo "No deployment required for this branch combination."
