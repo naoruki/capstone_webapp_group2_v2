@@ -32,7 +32,7 @@ REGISTER_FORM = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Register</title>
+    <title>New Register</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -43,7 +43,7 @@ REGISTER_FORM = """
             <div class="col-md-6">
                 <div class="card mt-5">
                     <div class="card-header text-center">
-                        <h3>Register</h3>
+                        <h3>New Register</h3>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="/register">
